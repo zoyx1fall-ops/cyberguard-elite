@@ -1,0 +1,69 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id            String      @id @default(cuid())
+  email         String      @unique
+  name          String
+  passwordHash  String
+  role          String      @default("USER")
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  progress      Progress[]
+  badges        UserBadge[]
+}
+
+model Scenario {
+  id          String     @id @default(cuid())
+  slug        String     @unique
+  title       String
+  description String
+  category    String
+  difficulty  String
+  steps       String
+  isPublished Boolean    @default(false)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  progress    Progress[]
+}
+
+model Progress {
+  id          String    @id @default(cuid())
+  userId      String
+  scenarioId  String
+  status      String    @default("NOT_STARTED")
+  score       Int       @default(0)
+  completedAt DateTime?
+  attempts    Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scenario    Scenario  @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  @@unique([userId, scenarioId])
+}
+
+model Badge {
+  id          String      @id @default(cuid())
+  name        String
+  description String
+  icon        String
+  color       String
+  createdAt   DateTime    @default(now())
+  userBadges  UserBadge[]
+}
+
+model UserBadge {
+  id       String   @id @default(cuid())
+  userId   String
+  badgeId  String
+  earnedAt DateTime @default(now())
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge    Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  @@unique([userId, badgeId])
+}
