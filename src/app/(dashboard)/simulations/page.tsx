@@ -26,6 +26,7 @@ export default function SimulationsPage() {
   const [selectedDiff, setSelectedDiff] = useState<string | null>(null);
   const [step, setStep] = useState(0);
   const [chosen, setChosen] = useState<number | null>(null);
+  const [shuffledChoices, setShuffledChoices] = useState<Choice[]>([]);
   const [score, setScore] = useState(0);
   const [done, setDone] = useState(false);
   const [hintsUsed, setHintsUsed] = useState(0);
@@ -44,6 +45,10 @@ export default function SimulationsPage() {
   const diff = DIFFICULTIES.find(d => d.id === selectedDiff) || DIFFICULTIES[0];
   const maxHints = selectedDiff === "easy" ? 3 : selectedDiff === "normal" ? 1 : 0;
 
+  function shuffle(choices: Choice[]) {
+    return [...choices].sort(() => Math.random() - 0.5);
+  }
+
   function startWithDiff(scenario: Scenario, diffId: string) {
     setActive(scenario);
     setSelectedDiff(diffId);
@@ -56,12 +61,13 @@ export default function SimulationsPage() {
     setGaveUp(false);
     setDiffSelect(false);
     setShowFullCode(false);
+    setShuffledChoices(shuffle(scenario.steps[0].choices));
   }
 
   function selectChoice(i: number) {
     if (chosen !== null) return;
     setChosen(i);
-    const c = active!.steps[step].choices[i];
+    const c = shuffledChoices[i];
     if (c.correct) {
       const baseXP = 40 / active!.steps.length;
       const hintPenalty = hintsUsed * 5;
@@ -83,7 +89,9 @@ export default function SimulationsPage() {
 
   function nextStep() {
     if (step < active!.steps.length - 1) {
-      setStep(v => v + 1);
+      const nextIndex = step + 1;
+      setShuffledChoices(shuffle(active!.steps[nextIndex].choices));
+      setStep(nextIndex);
       setChosen(null);
       setShowHint(false);
     } else {
@@ -94,7 +102,6 @@ export default function SimulationsPage() {
   const diffColor: Record<string, string> = { PHISHING: "#1D4ED8", SQL_INJECTION: "#7C3AED", KEYLOGGER: "#059669", SOCIAL_ENGINEERING: "#DC2626" };
   const diffLabelColor: Record<string, string> = { BEGINNER: "#059669", INTERMEDIATE: "#F59E0B", ADVANCED: "#DC2626" };
 
-  // Difficulty selection screen
   if (diffSelect && active) {
     return (
       <div className="min-h-screen bg-cyber-dark cyber-grid-bg flex items-center justify-center p-6">
@@ -138,9 +145,9 @@ export default function SimulationsPage() {
     );
   }
 
-  // Active simulation
   if (active && selectedDiff) {
     const currentStep = active.steps[step];
+    const choices = shuffledChoices.length > 0 ? shuffledChoices : currentStep.choices;
     return (
       <div className="min-h-screen bg-cyber-dark cyber-grid-bg">
         <nav className="border-b border-cyber-border/40 glass-card border-x-0 border-t-0 sticky top-0 z-50">
@@ -176,7 +183,6 @@ export default function SimulationsPage() {
                   <p className="text-cyber-text text-base leading-relaxed whitespace-pre-line">{currentStep.content}</p>
                 </div>
 
-                {/* Hint */}
                 {showHint && (
                   <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
                     className="glass-card rounded-xl p-4 border border-cyber-gold/30 bg-cyber-gold/5">
@@ -189,10 +195,10 @@ export default function SimulationsPage() {
 
                 <div className="space-y-3">
                   <div className="text-xs font-mono text-cyber-text-muted uppercase tracking-wider">Cevabını seç:</div>
-                  {currentStep.choices.map((c, i) => (
+                  {choices.map((c, i) => (
                     <motion.button key={i} onClick={() => selectChoice(i)} disabled={chosen !== null}
                       whileHover={chosen === null ? { scale: 1.01 } : {}}
-                      className={`w-full text-left p-5 rounded-xl border transition-all ${chosen === null ? "glass-card hover:border-cyber-purple/50 cursor-pointer" : i === chosen ? (c.correct ? "border-cyber-green bg-cyber-green/10" : "border-cyber-red bg-cyber-red/10") : "glass-card opacity-40"}`}>
+                      className={`w-full text-left p-5 rounded-xl border transition-all ${chosen === null ? "glass-card hover:border-cyber-purple/50 cursor-pointer" : chosen === i ? (c.correct ? "border-cyber-green bg-cyber-green/10" : "border-cyber-red bg-cyber-red/10") : c.correct && chosen !== null ? "border-cyber-green/40 bg-cyber-green/5" : "glass-card opacity-40"}`}>
                       <div className="flex items-start gap-3">
                         <div className={`w-5 h-5 rounded-full flex-shrink-0 border flex items-center justify-center mt-0.5 ${chosen === i ? (c.correct ? "border-cyber-green bg-cyber-green" : "border-cyber-red bg-cyber-red") : "border-cyber-border"}`}>
                           {chosen === i && (c.correct ? <CheckCircle className="w-3 h-3 text-white" /> : <XCircle className="w-3 h-3 text-white" />)}
@@ -205,11 +211,11 @@ export default function SimulationsPage() {
 
                 {chosen !== null ? (
                   <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-                    <div className={`glass-card rounded-xl p-5 border ${currentStep.choices[chosen].correct ? "border-cyber-green/40 bg-cyber-green/5" : "border-cyber-red/40 bg-cyber-red/5"}`}>
-                      <div className={`text-sm font-600 mb-1 ${currentStep.choices[chosen].correct ? "text-cyber-green-light" : "text-cyber-red-light"}`}>
-                        {currentStep.choices[chosen].correct ? "✓ Doğru Cevap!" : "✗ Yanlış Cevap"}
+                    <div className={`glass-card rounded-xl p-5 border ${choices[chosen].correct ? "border-cyber-green/40 bg-cyber-green/5" : "border-cyber-red/40 bg-cyber-red/5"}`}>
+                      <div className={`text-sm font-600 mb-1 ${choices[chosen].correct ? "text-cyber-green-light" : "text-cyber-red-light"}`}>
+                        {choices[chosen].correct ? "✓ Doğru Cevap!" : "✗ Yanlış Cevap (-10 XP)"}
                       </div>
-                      <p className="text-cyber-text-muted text-sm">{currentStep.choices[chosen].consequence}</p>
+                      <p className="text-cyber-text-muted text-sm">{choices[chosen].consequence}</p>
                     </div>
                     <div className="glass-card rounded-xl p-5 border border-cyber-blue/30 bg-cyber-blue/5">
                       <div className="flex items-center gap-2 text-xs font-mono text-cyber-blue-light mb-2">
@@ -314,7 +320,6 @@ export default function SimulationsPage() {
           )}
         </main>
 
-        {/* Give up confirm modal */}
         <AnimatePresence>
           {showGiveUpConfirm && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -342,7 +347,6 @@ export default function SimulationsPage() {
     );
   }
 
-  // Scenario list
   return (
     <div className="min-h-screen bg-cyber-dark cyber-grid-bg">
       <nav className="border-b border-cyber-border/40 glass-card border-x-0 border-t-0 sticky top-0 z-50">
@@ -362,7 +366,6 @@ export default function SimulationsPage() {
             <h1 className="font-display font-700 text-3xl text-cyber-text">Simülasyon Kütüphanesi</h1>
             <p className="text-cyber-text-muted text-sm mt-1">Tüm senaryolar eğitim simülasyonudur. Gerçek sistem etkilenmez.</p>
           </motion.div>
-
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
             {scenarios.map((s) => (
               <motion.div key={s.id} variants={FADE_UP} whileHover={{ y: -4 }}
@@ -409,7 +412,6 @@ export default function SimulationsPage() {
               </motion.div>
             ))}
           </div>
-
           <motion.div variants={FADE_UP} className="glass-card rounded-2xl p-6 border border-cyber-gold/20">
             <div className="flex items-center gap-3 mb-4">
               <Zap className="w-5 h-5 text-cyber-gold" />
