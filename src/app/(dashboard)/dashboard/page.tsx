@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Shield, Trophy, Target, Clock, ArrowRight, LogOut, Terminal, BarChart3, BookOpen, Star, Users, Zap, ChevronUp, GraduationCap } from "lucide-react";
+import { Shield, Trophy, Target, Clock, ArrowRight, LogOut, Terminal, Star, Users, ChevronUp, GraduationCap } from "lucide-react";
 
 const LEAGUES = [
   { name: "TRY", color: "#60A5FA", modules: 3, desc: "Başlangıç" },
@@ -13,24 +13,13 @@ const LEAGUES = [
   { name: "HACK GOD", color: "#EC4899", modules: 80, desc: "Efsane" },
 ];
 
-const FAKE_LEADERBOARD = [
-  { rank: 1, name: "0xShadow", score: 4820, league: "HACK GOD", title: "Cyber Phantom", titleColor: "#FCD34D", badge: "👑" },
-  { rank: 2, name: "NullByte", score: 3950, league: "HACK GOD", title: "Root Hunter", titleColor: "#A78BFA", badge: "⚡" },
-  { rank: 3, name: "Kr3ator", score: 3210, league: "BIG SENIOR", title: "Shell Breaker", titleColor: "#EC4899", badge: "🔥" },
-  { rank: 4, name: "v0idwalker", score: 2890, league: "BIG SENIOR", title: "Packet Ghost", titleColor: "#60A5FA", badge: "🎯" },
-  { rank: 5, name: "xpl01t", score: 2340, league: "SENIOR", title: "Code Surgeon", titleColor: "#34D399", badge: "💎" },
-  { rank: 6, name: "darkping", score: 1980, league: "SENIOR", title: "Firewall Dancer", titleColor: "#FCD34D", badge: "🛡️" },
-  { rank: 7, name: "r3v3rse", score: 1540, league: "JUNIOR", title: "Byte Wizard", titleColor: "#A78BFA", badge: "⭐" },
-  { rank: 8, name: "n3tscout", score: 980, league: "JUNIOR", title: "Script Ninja", titleColor: "#60A5FA", badge: "🔰" },
-  { rank: 9, name: "You", score: 120, league: "TRY", title: "Recruit", titleColor: "#94A3B8", badge: "🆕" },
-];
-
 const STAGGER = { hidden: {}, visible: { transition: { staggerChildren: 0.07 } } };
 const FADE_UP = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] } } };
 
 export default function DashboardPage() {
   const [user, setUser] = useState<{ name: string; email: string; role: string } | null>(null);
   const [activeTab, setActiveTab] = useState<"overview" | "leaderboard" | "leagues">("overview");
+  const [leaderboard, setLeaderboard] = useState<{ rank: number; name: string; score: number; league: string }[]>([]);
   const router = useRouter();
   const userScore = 120;
   const userLeague = LEAGUES[0];
@@ -40,6 +29,14 @@ export default function DashboardPage() {
     if (!stored) { router.push("/login"); return; }
     setUser(JSON.parse(stored));
   }, [router]);
+
+  useEffect(() => {
+    const token = localStorage.getItem("cg_token");
+    fetch("/api/leaderboard", { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(data => { if (data.users) setLeaderboard(data.users); })
+      .catch(() => {});
+  }, []);
 
   if (!user) return null;
 
@@ -98,7 +95,7 @@ export default function DashboardPage() {
                 { label: "Tamamlanan", value: "1", icon: Trophy, color: "text-cyber-gold" },
                 { label: "Devam Eden", value: "2", icon: Clock, color: "text-cyber-purple-light" },
                 { label: "Ortalama Puan", value: "95%", icon: Target, color: "text-cyber-green-light" },
-                { label: "Sıralama", value: "#9", icon: Users, color: "text-cyber-blue-light" },
+                { label: "Sıralama", value: `#${leaderboard.length > 0 ? leaderboard.length : "-"}`, icon: Users, color: "text-cyber-blue-light" },
               ].map(({ label, value, icon: Icon, color }) => (
                 <div key={label} className="glass-card rounded-xl p-5 space-y-3">
                   <Icon className={`w-5 h-5 ${color}`} />
@@ -127,12 +124,9 @@ export default function DashboardPage() {
               </div>
             </motion.div>
 
-            {/* ANA MENÜ - İKİ BÖLÜM */}
             <motion.div variants={FADE_UP}>
               <h2 className="font-display font-600 text-lg text-cyber-text mb-4">Eğitim Platformu</h2>
               <div className="grid md:grid-cols-2 gap-6">
-
-                {/* MODÜLLER - Okuma */}
                 <div className="glass-card rounded-2xl p-6 border border-cyber-blue/20 space-y-4">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-cyber-blue/20 border border-cyber-blue/40 flex items-center justify-center">
@@ -143,29 +137,11 @@ export default function DashboardPage() {
                       <div className="text-xs text-cyber-text-muted">Teknik içerik, kod örnekleri, gerçek vakalar</div>
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    {[
-                      { label: "Phishing & Social Engineering", color: "#DC2626", done: true },
-                      { label: "SQL Injection", color: "#1D4ED8", done: false },
-                      { label: "Keylogger & Malware", color: "#7C3AED", done: false },
-                      { label: "XSS & Web Saldırıları", color: "#059669", done: false },
-                    ].map(({ label, color, done }) => (
-                      <div key={label} className="flex items-center gap-3 p-3 bg-cyber-dark-3 rounded-lg">
-                        <div className="w-2 h-2 rounded-full" style={{ background: color }} />
-                        <span className="text-xs text-cyber-text flex-1">{label}</span>
-                        {done ? <span className="text-xs text-cyber-green-light font-mono">✓ +10 XP</span> : <span className="text-xs text-cyber-text-muted font-mono">Okunmadı</span>}
-                      </div>
-                    ))}
-                  </div>
                   <Link href="/modules"
                     className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-cyber-blue/20 border border-cyber-blue/40 text-cyber-blue-light text-sm font-display font-600 hover:bg-cyber-blue/30 transition-all">
-                    <GraduationCap className="w-4 h-4" />
-                    Modüllere Git
-                    <ArrowRight className="w-4 h-4" />
+                    <GraduationCap className="w-4 h-4" />Modüllere Git<ArrowRight className="w-4 h-4" />
                   </Link>
                 </div>
-
-                {/* SİMÜLASYONLAR - Uygulama */}
                 <div className="glass-card rounded-2xl p-6 border border-cyber-purple/20 space-y-4">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-cyber-purple/20 border border-cyber-purple/40 flex items-center justify-center">
@@ -176,28 +152,11 @@ export default function DashboardPage() {
                       <div className="text-xs text-cyber-text-muted">4 şıklı sorular, zorluk modları, XP kazan</div>
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    {[
-                      { label: "Phishing Farkındalığı", color: "#DC2626", xp: 40, done: true },
-                      { label: "SQL Injection", color: "#1D4ED8", xp: 40, done: false },
-                      { label: "Keylogger Savunması", color: "#7C3AED", xp: 40, done: false },
-                      { label: "Sosyal Mühendislik", color: "#F59E0B", xp: 40, done: false },
-                    ].map(({ label, color, xp, done }) => (
-                      <div key={label} className="flex items-center gap-3 p-3 bg-cyber-dark-3 rounded-lg">
-                        <div className="w-2 h-2 rounded-full" style={{ background: color }} />
-                        <span className="text-xs text-cyber-text flex-1">{label}</span>
-                        {done ? <span className="text-xs text-cyber-green-light font-mono">✓ +{xp} XP</span> : <span className="text-xs text-cyber-gold font-mono">+{xp} XP</span>}
-                      </div>
-                    ))}
-                  </div>
                   <Link href="/simulations"
                     className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-cyber-purple/20 border border-cyber-purple/40 text-cyber-purple-light text-sm font-display font-600 hover:bg-cyber-purple/30 transition-all">
-                    <Shield className="w-4 h-4" />
-                    Simülasyonlara Git
-                    <ArrowRight className="w-4 h-4" />
+                    <Shield className="w-4 h-4" />Simülasyonlara Git<ArrowRight className="w-4 h-4" />
                   </Link>
                 </div>
-
               </div>
             </motion.div>
 
@@ -228,43 +187,55 @@ export default function DashboardPage() {
           <motion.div initial="hidden" animate="visible" variants={STAGGER} className="space-y-6">
             <motion.div variants={FADE_UP}>
               <h1 className="font-display font-700 text-3xl text-cyber-text">Liderlik Tablosu</h1>
-              <p className="text-cyber-text-muted text-sm mt-1">Haftalık sıralama · Her Pazartesi sıfırlanır</p>
+              <p className="text-cyber-text-muted text-sm mt-1">Gerçek kullanıcı sıralaması</p>
             </motion.div>
-            <motion.div variants={FADE_UP} className="grid grid-cols-3 gap-4">
-              {FAKE_LEADERBOARD.slice(0, 3).map((u, i) => (
-                <div key={u.rank} className={`glass-card rounded-2xl p-6 text-center ${i === 0 ? "border-cyber-gold/40" : ""}`}
-                  style={{ boxShadow: i === 0 ? "0 0 30px rgba(245,158,11,0.2)" : undefined }}>
-                  <div className="text-3xl mb-2">{u.badge}</div>
-                  <div className="font-display font-700 text-lg text-cyber-text">{u.name}</div>
-                  <div className="text-xs font-mono mt-1" style={{ color: u.titleColor }}>{u.title}</div>
-                  <div className="font-display font-700 text-2xl mt-3" style={{ color: LEAGUES.find(l => l.name === u.league)?.color }}>
-                    {u.score.toLocaleString()}
-                  </div>
-                  <div className="text-xs text-cyber-text-muted font-mono">XP</div>
-                </div>
-              ))}
-            </motion.div>
-            <motion.div variants={FADE_UP} className="glass-card rounded-2xl overflow-hidden">
-              {FAKE_LEADERBOARD.map((u) => (
-                <div key={u.rank} className={`flex items-center gap-4 px-6 py-4 border-b border-cyber-border/20 transition-colors ${u.name === "You" ? "bg-cyber-purple/10" : "hover:bg-cyber-dark-3"}`}>
-                  <div className={`w-8 text-center font-display font-700 ${u.rank <= 3 ? "text-cyber-gold" : "text-cyber-text-muted"}`}>
-                    {u.rank <= 3 ? ["🥇", "🥈", "🥉"][u.rank - 1] : `#${u.rank}`}
-                  </div>
-                  <div className="text-xl">{u.badge}</div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className={`font-display font-600 text-sm ${u.name === "You" ? "text-cyber-purple-light" : "text-cyber-text"}`}>{u.name}</span>
-                      <span className="text-xs font-mono px-2 py-0.5 rounded" style={{ color: u.titleColor, background: `${u.titleColor}15` }}>{u.title}</span>
-                    </div>
-                    <div className="text-xs text-cyber-text-muted font-mono">{u.league}</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-display font-700 text-cyber-text">{u.score.toLocaleString()}</div>
-                    <div className="text-xs text-cyber-text-muted font-mono">XP</div>
-                  </div>
-                </div>
-              ))}
-            </motion.div>
+            {leaderboard.length === 0 ? (
+              <div className="glass-card rounded-2xl p-12 text-center">
+                <Trophy className="w-12 h-12 mx-auto mb-4 text-cyber-text-muted" />
+                <p className="text-cyber-text-muted">Henüz sıralamada kullanıcı yok. İlk sen ol!</p>
+              </div>
+            ) : (
+              <>
+                <motion.div variants={FADE_UP} className="grid grid-cols-3 gap-4">
+                  {leaderboard.slice(0, 3).map((u, i) => {
+                    const league = LEAGUES.find(l => l.name === u.league);
+                    return (
+                      <div key={u.rank} className={`glass-card rounded-2xl p-6 text-center ${i === 0 ? "border-cyber-gold/40" : ""}`}
+                        style={{ boxShadow: i === 0 ? "0 0 30px rgba(245,158,11,0.2)" : undefined }}>
+                        <div className="text-3xl mb-2">{["👑", "🥈", "🥉"][i]}</div>
+                        <div className="font-display font-700 text-lg text-cyber-text">{u.name}</div>
+                        <div className="font-display font-700 text-2xl mt-3" style={{ color: league?.color }}>{u.score.toLocaleString()}</div>
+                        <div className="text-xs text-cyber-text-muted font-mono">XP · {u.league}</div>
+                      </div>
+                    );
+                  })}
+                </motion.div>
+                <motion.div variants={FADE_UP} className="glass-card rounded-2xl overflow-hidden">
+                  {leaderboard.map((u) => {
+                    const league = LEAGUES.find(l => l.name === u.league);
+                    const isMe = u.name === user?.name;
+                    return (
+                      <div key={u.rank} className={`flex items-center gap-4 px-6 py-4 border-b border-cyber-border/20 transition-colors ${isMe ? "bg-cyber-purple/10" : "hover:bg-cyber-dark-3"}`}>
+                        <div className={`w-8 text-center font-display font-700 ${u.rank <= 3 ? "text-cyber-gold" : "text-cyber-text-muted"}`}>
+                          {u.rank <= 3 ? ["🥇", "🥈", "🥉"][u.rank - 1] : `#${u.rank}`}
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className={`font-display font-600 text-sm ${isMe ? "text-cyber-purple-light" : "text-cyber-text"}`}>{u.name}</span>
+                            {isMe && <span className="text-xs font-mono px-1.5 py-0.5 rounded" style={{ background: "rgba(124,58,237,0.2)", color: "#A78BFA" }}>Sen</span>}
+                          </div>
+                          <div className="text-xs text-cyber-text-muted font-mono">{u.league}</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-display font-700" style={{ color: league?.color }}>{u.score.toLocaleString()}</div>
+                          <div className="text-xs text-cyber-text-muted font-mono">XP</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </motion.div>
+              </>
+            )}
           </motion.div>
         )}
 
@@ -272,7 +243,7 @@ export default function DashboardPage() {
           <motion.div initial="hidden" animate="visible" variants={STAGGER} className="space-y-6">
             <motion.div variants={FADE_UP}>
               <h1 className="font-display font-700 text-3xl text-cyber-text">Lig Sistemi</h1>
-              <p className="text-cyber-text-muted text-sm mt-1">Her ligde modülleri oku ve simülasyonları tamamla, bir üst lige yüksel.</p>
+              <p className="text-cyber-text-muted text-sm mt-1">Her ligde modülleri oku ve simülasyonları tamamla.</p>
             </motion.div>
             <div className="space-y-4">
               {LEAGUES.map((league, i) => (
@@ -300,11 +271,6 @@ export default function DashboardPage() {
                       <div className="text-xs text-cyber-text-muted font-mono">modül gerekli</div>
                     </div>
                   </div>
-                  <div className="mt-4 pt-4 border-t border-cyber-border/30 grid grid-cols-3 gap-4 text-center">
-                    <div><div className="text-xs text-cyber-text-muted font-mono">Okuma</div><div className="text-cyber-green-light font-mono text-sm">+10 XP</div></div>
-                    <div><div className="text-xs text-cyber-text-muted font-mono">Uygulama</div><div className="text-cyber-gold font-mono text-sm">+40 XP</div></div>
-                    <div><div className="text-xs text-cyber-text-muted font-mono">İpucu</div><div className="text-cyber-red-light font-mono text-sm">-5 XP</div></div>
-                  </div>
                 </motion.div>
               ))}
             </div>
@@ -314,9 +280,8 @@ export default function DashboardPage() {
                 <h2 className="font-display font-600 text-cyber-text">Yükselme Kuralları</h2>
               </div>
               <div className="space-y-2 text-sm text-cyber-text-muted">
-                <div className="flex items-start gap-2"><ChevronUp className="w-4 h-4 text-cyber-green-light mt-0.5" /><span>Tüm modülleri oku (okumadan yükselemezsin)</span></div>
+                <div className="flex items-start gap-2"><ChevronUp className="w-4 h-4 text-cyber-green-light mt-0.5" /><span>Tüm modülleri oku</span></div>
                 <div className="flex items-start gap-2"><ChevronUp className="w-4 h-4 text-cyber-green-light mt-0.5" /><span>1 hafta boyunca liginde ilk 5'te kal</span></div>
-                <div className="flex items-start gap-2"><ChevronUp className="w-4 h-4 text-cyber-green-light mt-0.5" /><span>Her 6-8 saatte bir yeni modül otomatik eklenir</span></div>
                 <div className="flex items-start gap-2"><ChevronUp className="w-4 h-4 text-cyber-gold mt-0.5" /><span>Pes etmek o uygulamadan puan kazanmanı engeller</span></div>
               </div>
             </motion.div>
