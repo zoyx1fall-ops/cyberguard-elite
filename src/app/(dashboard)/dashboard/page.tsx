@@ -6,23 +6,30 @@ import { useRouter } from "next/navigation";
 import { Shield, Trophy, Target, Clock, ArrowRight, LogOut, Terminal, Star, Users, ChevronUp, GraduationCap } from "lucide-react";
 
 const LEAGUES = [
-  { name: "TRY", color: "#60A5FA", modules: 3, desc: "Başlangıç" },
-  { name: "JUNIOR", color: "#A78BFA", modules: 6, desc: "Gelişen" },
-  { name: "SENIOR", color: "#FCD34D", modules: 10, desc: "Uzman" },
-  { name: "BIG SENIOR", color: "#F97316", modules: 30, desc: "İleri Uzman" },
-  { name: "HACK GOD", color: "#EC4899", modules: 80, desc: "Efsane" },
+  { name: "TRY", color: "#60A5FA", minScore: 0, modules: 3, desc: "Başlangıç" },
+  { name: "JUNIOR", color: "#A78BFA", minScore: 100, modules: 6, desc: "Gelişen" },
+  { name: "SENIOR", color: "#FCD34D", minScore: 400, modules: 10, desc: "Uzman" },
+  { name: "BIG SENIOR", color: "#F97316", minScore: 1000, modules: 30, desc: "İleri Uzman" },
+  { name: "HACK GOD", color: "#EC4899", minScore: 3000, modules: 80, desc: "Efsane" },
 ];
+
+function getLeague(score: number) {
+  if (score >= 3000) return LEAGUES[4];
+  if (score >= 1000) return LEAGUES[3];
+  if (score >= 400) return LEAGUES[2];
+  if (score >= 100) return LEAGUES[1];
+  return LEAGUES[0];
+}
 
 const STAGGER = { hidden: {}, visible: { transition: { staggerChildren: 0.07 } } };
 const FADE_UP = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] } } };
 
 export default function DashboardPage() {
-  const [user, setUser] = useState<{ name: string; email: string; role: string } | null>(null);
+  const [user, setUser] = useState<{ id: string; name: string; email: string; role: string } | null>(null);
   const [activeTab, setActiveTab] = useState<"overview" | "leaderboard" | "leagues">("overview");
   const [leaderboard, setLeaderboard] = useState<{ rank: number; name: string; score: number; league: string }[]>([]);
+  const [userScore, setUserScore] = useState(0);
   const router = useRouter();
-  const userScore = 120;
-  const userLeague = LEAGUES[0];
 
   useEffect(() => {
     const stored = localStorage.getItem("cg_user");
@@ -31,14 +38,28 @@ export default function DashboardPage() {
   }, [router]);
 
   useEffect(() => {
-    const token = localStorage.getItem("cg_token");
-    fetch("/api/leaderboard", { headers: { Authorization: `Bearer ${token}` } })
+    fetch("/api/leaderboard")
       .then(r => r.json())
-      .then(data => { if (data.users) setLeaderboard(data.users); })
+      .then(data => {
+        if (data.users) {
+          setLeaderboard(data.users);
+          const stored = localStorage.getItem("cg_user");
+          if (stored) {
+            const u = JSON.parse(stored);
+            const me = data.users.find((x: { name: string; score: number }) => x.name === u.name);
+            if (me) setUserScore(me.score);
+          }
+        }
+      })
       .catch(() => {});
   }, []);
 
   if (!user) return null;
+
+  const userLeague = getLeague(userScore);
+  const nextLeagueIdx = LEAGUES.findIndex(l => l.name === userLeague.name) + 1;
+  const nextLeague = nextLeagueIdx < LEAGUES.length ? LEAGUES[nextLeagueIdx] : null;
+  const myRank = leaderboard.find(u2 => u2.name === user.name)?.rank;
 
   return (
     <div className="min-h-screen bg-cyber-dark cyber-grid-bg">
@@ -92,10 +113,10 @@ export default function DashboardPage() {
 
             <motion.div variants={FADE_UP} className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
-                { label: "Tamamlanan", value: "1", icon: Trophy, color: "text-cyber-gold" },
-                { label: "Devam Eden", value: "2", icon: Clock, color: "text-cyber-purple-light" },
-                { label: "Ortalama Puan", value: "95%", icon: Target, color: "text-cyber-green-light" },
-                { label: "Sıralama", value: `#${leaderboard.length > 0 ? leaderboard.length : "-"}`, icon: Users, color: "text-cyber-blue-light" },
+                { label: "Toplam XP", value: `${userScore}`, icon: Trophy, color: "text-cyber-gold" },
+                { label: "Lig", value: userLeague.name, icon: Clock, color: "text-cyber-purple-light" },
+                { label: "Sıralama", value: myRank ? `#${myRank}` : "-", icon: Users, color: "text-cyber-blue-light" },
+                { label: "Hedef", value: nextLeague ? nextLeague.name : "MAX", icon: Target, color: "text-cyber-green-light" },
               ].map(({ label, value, icon: Icon, color }) => (
                 <div key={label} className="glass-card rounded-xl p-5 space-y-3">
                   <Icon className={`w-5 h-5 ${color}`} />
@@ -107,22 +128,26 @@ export default function DashboardPage() {
               ))}
             </motion.div>
 
-            <motion.div variants={FADE_UP} className="glass-card rounded-2xl p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="font-display font-600 text-cyber-text">Sonraki Lig: JUNIOR</h2>
-                <span className="text-xs font-mono text-cyber-text-muted">3 modül gerekli</span>
-              </div>
-              <div className="space-y-2">
-                <div className="flex justify-between text-xs font-mono">
-                  <span className="text-cyber-text-muted">İlerleme</span>
-                  <span className="text-cyber-purple-light">1 / 3 modül</span>
+            {nextLeague && (
+              <motion.div variants={FADE_UP} className="glass-card rounded-2xl p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="font-display font-600 text-cyber-text">Sonraki Lig: {nextLeague.name}</h2>
+                  <span className="text-xs font-mono text-cyber-text-muted">{nextLeague.minScore - userScore} XP kaldı</span>
                 </div>
-                <div className="h-2 bg-cyber-dark-3 rounded-full overflow-hidden">
-                  <motion.div initial={{ width: 0 }} animate={{ width: "33%" }} transition={{ duration: 1, ease: "easeOut" }}
-                    className="h-full rounded-full bg-gradient-to-r from-cyber-purple to-cyber-blue" />
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs font-mono">
+                    <span className="text-cyber-text-muted">İlerleme</span>
+                    <span className="text-cyber-purple-light">{userScore} / {nextLeague.minScore} XP</span>
+                  </div>
+                  <div className="h-2 bg-cyber-dark-3 rounded-full overflow-hidden">
+                    <motion.div initial={{ width: 0 }}
+                      animate={{ width: `${Math.min(100, (userScore / nextLeague.minScore) * 100)}%` }}
+                      transition={{ duration: 1, ease: "easeOut" }}
+                      className="h-full rounded-full bg-gradient-to-r from-cyber-purple to-cyber-blue" />
+                  </div>
                 </div>
-              </div>
-            </motion.div>
+              </motion.div>
+            )}
 
             <motion.div variants={FADE_UP}>
               <h2 className="font-display font-600 text-lg text-cyber-text mb-4">Eğitim Platformu</h2>
@@ -202,7 +227,7 @@ export default function DashboardPage() {
                     return (
                       <div key={u.rank} className={`glass-card rounded-2xl p-6 text-center ${i === 0 ? "border-cyber-gold/40" : ""}`}
                         style={{ boxShadow: i === 0 ? "0 0 30px rgba(245,158,11,0.2)" : undefined }}>
-                        <div className="text-3xl mb-2">{["👑", "🥈", "🥉"][i]}</div>
+                        <div className="text-3xl mb-2">{["🥇", "🥈", "🥉"][i]}</div>
                         <div className="font-display font-700 text-lg text-cyber-text">{u.name}</div>
                         <div className="font-display font-700 text-2xl mt-3" style={{ color: league?.color }}>{u.score.toLocaleString()}</div>
                         <div className="text-xs text-cyber-text-muted font-mono">XP · {u.league}</div>
@@ -263,7 +288,7 @@ export default function DashboardPage() {
                             <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-cyber-green/20 text-cyber-green-light border border-cyber-green/30">Mevcut</span>
                           )}
                         </div>
-                        <div className="text-xs text-cyber-text-muted">{league.desc}</div>
+                        <div className="text-xs text-cyber-text-muted">{league.desc} · {league.minScore} XP gerekli</div>
                       </div>
                     </div>
                     <div className="text-right">
@@ -280,8 +305,8 @@ export default function DashboardPage() {
                 <h2 className="font-display font-600 text-cyber-text">Yükselme Kuralları</h2>
               </div>
               <div className="space-y-2 text-sm text-cyber-text-muted">
-                <div className="flex items-start gap-2"><ChevronUp className="w-4 h-4 text-cyber-green-light mt-0.5" /><span>Tüm modülleri oku</span></div>
-                <div className="flex items-start gap-2"><ChevronUp className="w-4 h-4 text-cyber-green-light mt-0.5" /><span>1 hafta boyunca liginde ilk 5'te kal</span></div>
+                <div className="flex items-start gap-2"><ChevronUp className="w-4 h-4 text-cyber-green-light mt-0.5" /><span>Simülasyonları tamamla, XP kazan</span></div>
+                <div className="flex items-start gap-2"><ChevronUp className="w-4 h-4 text-cyber-green-light mt-0.5" /><span>Ligin XP gereksinimini karşıla</span></div>
                 <div className="flex items-start gap-2"><ChevronUp className="w-4 h-4 text-cyber-gold mt-0.5" /><span>Pes etmek o uygulamadan puan kazanmanı engeller</span></div>
               </div>
             </motion.div>
